@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Werner Institute | Clinical Visual Integration</title>
+<style>
+    :root {
+        --primary-navy: #0a192f;
+        --clinical-blue: #1e3a8a;
+        --accent-red: #cc0000;
+        --neutral-bg: #f8fafc;
+        --text-main: #1e293b;
+        --glass: rgba(255, 255, 255, 0.98);
+    }
+
+    body, html { 
+        margin: 0; padding: 0; width: 100%; height: 100%; 
+        background-color: #000; overflow: hidden; 
+        font-family: 'Inter', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
+    }
+
+    canvas { display: block; position: absolute; top: 0; left: 0; z-index: 1; }
+
+    #setup-panel { 
+        position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); 
+        z-index: 100; background: var(--glass); 
+        padding: 55px; border-radius: 20px; border: 1px solid #e2e8f0; 
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6); width: 540px; color: var(--text-main);
+    }
+
+    #setup-panel h1 { 
+        margin: 0 0 15px 0; font-size: 44px; color: var(--primary-navy); font-weight: 800; letter-spacing: -1.5px;
+    }
+
+    .clinical-overview {
+        font-size: 15px; line-height: 1.6; color: #475569; margin-bottom: 35px;
+        text-align: left; padding: 20px; background: #fff; border-left: 6px solid var(--primary-navy);
+        border-radius: 8px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
+    }
+
+    .control-grid {
+        display: grid; grid-template-columns: 1fr 110px; gap: 20px; align-items: center;
+        margin-bottom: 35px; text-align: left;
+    }
+
+    .control-grid label { font-weight: 700; font-size: 16px; color: var(--primary-navy); }
+
+    input[type="number"] { 
+        font-size: 18px; padding: 10px; width: 100%; text-align: center; 
+        border: 2px solid #cbd5e1; border-radius: 8px; outline: none; transition: border-color 0.2s;
+    }
+    input[type="number"]:focus { border-color: var(--clinical-blue); }
+
+    #start-btn { 
+        padding: 22px 40px; font-size: 24px; background-color: var(--primary-navy); 
+        color: white; border: none; cursor: pointer; border-radius: 12px; 
+        font-weight: 800; width: 100%; transition: all 0.2s ease;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+    #start-btn:hover { background-color: #112240; transform: translateY(-2px); }
+
+    #prep-display, #center-display { 
+        position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); 
+        text-align: center; color: var(--text-main); display: none; 
+        background: var(--glass); padding: 60px 80px; border-radius: 24px; 
+        border: 3px solid var(--primary-navy); z-index: 50; max-width: 85%;
+    }
+
+    .logo-large { font-size: 64px; font-weight: 800; margin-bottom: 25px; color: var(--primary-navy); letter-spacing: -2px; }
+    .affirmation-text { font-size: 28px; margin-bottom: 25px; line-height: 1.5; font-weight: 500; color: #334155; }
+    #countdown-text { font-size: 55px; font-weight: 800; color: var(--accent-red); }
+
+    #info-panel { 
+        position: absolute; top: 30px; left: 30px; background: var(--glass); 
+        padding: 24px; border-radius: 12px; border-left: 8px solid var(--primary-navy);
+        font-size: 20px; display: none; z-index: 50; min-width: 300px;
+    }
+
+    #copyright-notice { 
+        position: absolute; bottom: 15px; right: 20px; font-size: 6pt; 
+        color: rgba(255,255,255,0.45); z-index: 100; text-align: right; 
+        line-height: 1.4; font-weight: 500;
+    }
+
+    .breathing-instruction { font-size: 78px; font-weight: 800; color: var(--primary-navy); margin-bottom: 5px; }
+    .washout-disclaimer { font-size: 20px; margin-top: 25px; color: #64748b; font-weight: 400; font-style: italic; }
+    .reset-btn { margin-top: 40px; padding: 18px 45px; font-size: 22px; cursor: pointer; background: var(--primary-navy); color: white; border: none; border-radius: 10px; font-weight: 700; }
+</style>
+</head>
+<body>
+
+<canvas id="mainCanvas"></canvas>
+
+<div id="setup-panel">
+    <h1>Werner Institute</h1>
+    <div class="clinical-overview">
+        The Werner Final Protocol calibrated density scaling to ensure a consistent sensory mismatch across all vectors. Stare strictly at the central target to challenge gaze stability.
+    </div>
+    
+    <div class="control-grid">
+        <label>Optokinetic Speed (deg/sec)</label>
+        <input type="number" id="speed-input" value="30">
+
+        <label>Stripe Traverse (seconds)</label>
+        <input type="number" id="stripe-time-input" value="6" min="1" max="20">
+
+        <label>Horizontal Line Density</label>
+        <input type="number" id="line-count-input" value="12" min="5" max="22">
+    </div>
+
+    <button id="start-btn">Initialize Protocol & Record</button>
+</div>
+
+<div id="prep-display">
+    <div class="logo-large">Werner Institute</div>
+    <div class="affirmation-text">Preparing for your routine. Please take a moment to breathe, get comfortable, and set everything up in your own environment. Focus forward.</div>
+    <div id="countdown-text">...s</div>
+</div>
+
+<div id="center-display"></div>
+
+<div id="info-panel">
+    <div style="margin-bottom:10px; font-size: 14px; text-transform: uppercase; letter-spacing: 1.5px; color: #64748b;">Current Activity</div>
+    <div style="margin-bottom:15px"><strong id="phase-name" style="color:var(--primary-navy); font-size: 24px;">-</strong></div>
+    <div style="font-size: 14px; text-transform: uppercase; letter-spacing: 1.5px; color: #64748b;">Remaining</div>
+    <div><strong id="time-left" style="color:var(--accent-red); font-size: 26px;">-</strong></div>
+</div>
+
+<div id="copyright-notice">© 2026 Werner Institute, All Rights Reserved.<br>Brian Werner, MPT</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+    const canvas = document.getElementById('mainCanvas');
+    const ctx = canvas.getContext('2d');
+    const startBtn = document.getElementById('start-btn');
+    const setupPanel = document.getElementById('setup-panel');
+    const speedInput = document.getElementById('speed-input');
+    const stripeTimeInput = document.getElementById('stripe-time-input');
+    const lineCountInput = document.getElementById('line-count-input');
+    const infoPanel = document.getElementById('info-panel');
+    const phaseNameEl = document.getElementById('phase-name');
+    const timeLeftEl = document.getElementById('time-left');
+    const centerDisplay = document.getElementById('center-display');
+    const prepDisplay = document.getElementById('prep-display');
+    const countdownTextEl = document.getElementById('countdown-text');
+
+    let width, height, centerX, centerY, maxRadius, minRadius;
+    const numDots = 800;
+    const dotRadius = 12;
+    const fixedDotRadiusPx = 25;
+    const rainbowColors = ['red', 'orange', 'gold', 'green', 'blue', 'indigo', 'violet'];
+    
+    let dots = [];
+    let fixedDot = null;
+    let currentTargetInterval = -1;
+    
+    let rotationSpeedRad = 0;
+    let stripeTraverseSec = 6;
+    let baseLines = 12;
+
+    let mediaRecorder;
+    let recordedChunks = [];
+
+    const phases = [
+        { id: 'prep', name: 'Initial Setup', duration: 20 },
+        { id: 'okn-dots-cw', name: 'OKN: Clockwise', duration: 45 },
+        { id: 'washout-1', name: 'Recovery (2 Cycles)', duration: 38 },
+        { id: 'okn-dots-ccw', name: 'OKN: Counter-Clockwise', duration: 45 },
+        { id: 'washout-2', name: 'Recovery (2 Cycles)', duration: 38 },
+        { id: 'linear-rl', name: 'Linear Flow (R to L)', duration: 45, arrow: 'right' },
+        { id: 'washout-3', name: 'Recovery (1 Cycle)', duration: 20 },
+        { id: 'linear-lr', name: 'Linear Flow (L to R)', duration: 45, arrow: 'left' },
+        { id: 'washout-4', name: 'Recovery (1 Cycle)', duration: 20 },
+        { id: 'linear-tb', name: 'Linear Flow (T to B)', duration: 45, arrow: 'up' },
+        { id: 'washout-5', name: 'Recovery (1 Cycle)', duration: 20 },
+        { id: 'linear-bt', name: 'Linear Flow (B to T)', duration: 45, arrow: 'down' },
+        { id: 'washout-final', name: 'Final Recovery', duration: 20 }
+    ];
+
+    let currentPhaseIndex = 0;
+    let phaseStartTime = 0;
+    let lastFrameTimestamp = 0;
+    let animationFrameId;
+    let currentPhaseId = 'idle';
+
+    function initDots() {
+        dots = [];
+        for (let i = 0; i < numDots; i++) {
+            dots.push({
+                angle: Math.random() * Math.PI * 2,
+                distance: minRadius + Math.random() * (maxRadius - minRadius),
+                color: rainbowColors[Math.floor(Math.random() * rainbowColors.length)]
+            });
+        }
+    }
+
+    function getSafeTargetPos() {
+        const quadrants = ['top', 'right', 'bottom', 'left'];
+        const quad = quadrants[Math.floor(Math.random() * quadrants.length)];
+        const vMargin = height * 0.18; 
+        const innerBound = minRadius * 1.4;
+        const outerBound = Math.min(centerX, centerY) * 0.82;
+        const dist = innerBound + Math.random() * (outerBound - innerBound);
+        
+        const angleMap = { 'top': -Math.PI/2, 'bottom': Math.PI/2, 'left': Math.PI, 'right': 0 };
+        const finalAngle = angleMap[quad] + (Math.PI/6) * (Math.random() - 0.5);
+
+        let x = centerX + Math.cos(finalAngle) * dist;
+        let y = centerY + Math.sin(finalAngle) * dist;
+
+        if (y < vMargin) y = vMargin;
+        if (y > height - vMargin) y = height - vMargin;
+        return { x, y };
+    }
+
+    function resize() {
+        width = canvas.width = window.innerWidth;
+        height = canvas.height = window.innerHeight;
+        centerX = width / 2;
+        centerY = height / 2;
+        maxRadius = Math.sqrt(centerX * centerX + centerY * centerY);
+        minRadius = Math.max(width, height) * 0.12;
+        if (currentPhaseId === 'idle') { initDots(); draw(); }
+    }
+
+    window.addEventListener('resize', resize);
+
+    function drawArrow(dir) {
+        ctx.save();
+        ctx.translate(centerX, centerY);
+        ctx.strokeStyle = 'red';
+        ctx.fillStyle = 'red';
+        ctx.lineWidth = 18;
+        ctx.lineJoin = 'round';
+        ctx.lineCap = 'round';
+        if (dir === 'left') ctx.rotate(Math.PI);
+        if (dir === 'up') ctx.rotate(-Math.PI / 2);
+        if (dir === 'down') ctx.rotate(Math.PI / 2);
+
+        const length = 110;
+        const head = 45;
+        ctx.beginPath(); ctx.moveTo(-length/2, 0); ctx.lineTo(length/2, 0); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(length/2 - head, -head); ctx.lineTo(length/2, 0); ctx.lineTo(length/2 - head, head); ctx.stroke();
+        ctx.restore();
+    }
+
+    function draw() {
+        ctx.fillStyle = 'black';
+        ctx.fillRect(0, 0, width, height);
+        const phase = phases[currentPhaseIndex];
+        if (!phase || currentPhaseId === 'idle') return;
+
+        if (phase.id.startsWith('okn-dots')) {
+            dots.forEach(dot => {
+                const x = centerX + Math.cos(dot.angle) * dot.distance;
+                const y = centerY + Math.sin(dot.angle) * dot.distance;
+                ctx.fillStyle = dot.color;
+                ctx.beginPath(); ctx.arc(x, y, dotRadius, 0, Math.PI * 2); ctx.fill();
+            });
+            if (fixedDot) {
+                ctx.fillStyle = 'white'; ctx.beginPath(); ctx.arc(fixedDot.x, fixedDot.y, fixedDotRadiusPx, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = 'black'; ctx.beginPath(); ctx.arc(fixedDot.x, fixedDot.y, 4, 0, Math.PI * 2); ctx.fill();
+            }
+        } else if (phase.id.startsWith('linear')) {
+            ctx.fillStyle = 'white'; ctx.fillRect(0, 0, width, height);
+            ctx.fillStyle = 'black';
+            const isVert = phase.id.includes('tb') || phase.id.includes('bt');
+            const activeLines = isVert ? Math.round(baseLines * 0.66) : baseLines;
+            const span = isVert ? height : width;
+            const barThickness = 80;
+            const totalCycleDist = span / (activeLines - 1);
+            const pixelsPerSec = span / stripeTraverseSec;
+            const offset = (performance.now() * (pixelsPerSec / 1000)) % totalCycleDist;
+
+            for (let i = -1; i < activeLines + 1; i++) {
+                let pos = (i * totalCycleDist);
+                if (phase.id === 'linear-rl') ctx.fillRect(width - (pos + offset), 0, barThickness, height);
+                else if (phase.id === 'linear-lr') ctx.fillRect(pos + offset - barThickness, 0, barThickness, height);
+                else if (phase.id === 'linear-tb') ctx.fillRect(0, pos + offset - barThickness, width, barThickness);
+                else if (phase.id === 'linear-bt') ctx.fillRect(0, height - (pos + offset), width, barThickness);
+            }
+            drawArrow(phase.arrow);
+        }
+    }
+
+    function update(timestamp) {
+        if (currentPhaseId === 'idle') return;
+        if (!lastFrameTimestamp) lastFrameTimestamp = timestamp;
+        let dt = (timestamp - lastFrameTimestamp) / 1000;
+        lastFrameTimestamp = timestamp;
+
+        const now = performance.now();
+        const elapsed = (now - phaseStartTime) / 1000;
+        const phase = phases[currentPhaseIndex];
+        const remaining = Math.max(0, phase.duration - elapsed);
+
+        phaseNameEl.textContent = phase.name;
+        timeLeftEl.textContent = `${Math.ceil(remaining)}s`;
+
+        if (phase.id === 'okn-dots-cw') {
+            dots.forEach(d => d.angle += rotationSpeedRad * dt);
+            updateInstantJump(elapsed);
+        } else if (phase.id === 'okn-dots-ccw') {
+            dots.forEach(d => d.angle -= rotationSpeedRad * dt);
+            updateInstantJump(elapsed);
+        }
+
+        if (phase.id === 'prep') {
+            prepDisplay.style.display = 'block'; countdownTextEl.textContent = `${Math.ceil(remaining)}s`;
+        } else { prepDisplay.style.display = 'none'; }
+
+        if (phase.id.startsWith('washout')) {
+            centerDisplay.style.display = 'block';
+            let cycleTime = elapsed % 19;
+            let cycleNum = Math.min(2, Math.floor(elapsed / 19) + 1);
+            let totalCycles = phase.duration > 20 ? 2 : 1;
+            let instr = cycleTime < 4 ? 'Inhale' : cycleTime < 11 ? 'Hold' : 'Exhale';
+            let sec = (cycleTime < 4 ? 4 : cycleTime < 11 ? 11 : 19) - Math.floor(cycleTime);
+            centerDisplay.innerHTML = `<div class="breathing-instruction">${instr}</div><div style="font-size:44px; font-weight:800; color:var(--text-main)">${sec}s</div><div style="font-size:24px; margin-top:12px; color:#475569; font-weight:500;">Cycle ${cycleNum} of ${totalCycles}</div><div class="washout-disclaimer">If you choose to skip the technique, please remain relaxed and keep your eyes focused forward.</div>`;
+        } else if (currentPhaseId !== 'idle') { centerDisplay.style.display = 'none'; }
+
+        if (elapsed >= phase.duration) {
+            currentPhaseIndex++;
+            if (currentPhaseIndex < phases.length) {
+                phaseStartTime = performance.now(); currentTargetInterval = -1; fixedDot = null;
+            } else {
+                currentPhaseId = 'idle';
+                centerDisplay.style.display = 'block';
+                centerDisplay.innerHTML = `<div style="font-size:36px; font-weight:800; color:var(--primary-navy)">You did great.</div><div style="font-size:22px; margin-top:20px; line-height:1.6; color:var(--text-main); font-weight:500;">Please follow the protocol that the physical therapist described. Either do your balance exercise or change your position based upon what the physical therapist is recommending.</div><button class="reset-btn" onclick="location.reload()">Return to Menu</button>`;
+                infoPanel.style.display = 'none';
+                if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
+                return;
+            }
+        }
+        draw();
+        animationFrameId = requestAnimationFrame(update);
+    }
+
+    function updateInstantJump(elapsed) {
+        const interval = 5.0; 
+        const idx = Math.floor(elapsed / interval);
+        if (currentTargetInterval !== idx) {
+            currentTargetInterval = idx;
+            fixedDot = getSafeTargetPos();
+        }
+    }
+
+    startBtn.addEventListener('click', () => {
+        rotationSpeedRad = (parseFloat(speedInput.value) || 30) * (Math.PI / 180);
+        stripeTraverseSec = parseFloat(stripeTimeInput.value) || 6;
+        baseLines = parseInt(lineCountInput.value) || 12;
+        
+        setupPanel.style.display = 'none';
+        infoPanel.style.display = 'block';
+        currentPhaseId = 'active';
+        
+        try {
+            const stream = canvas.captureStream(60);
+            mediaRecorder = new MediaRecorder(stream);
+            mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunks.push(e.data); };
+            mediaRecorder.onstop = () => {
+                const blob = new Blob(recordedChunks, { type: 'video/webm' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a'); a.href = url; a.download = 'Werner_Clinical_Protocol.webm'; a.click();
+            };
+            mediaRecorder.start();
+        } catch (err) { console.error("Media Capture failed:", err); }
+
+        phaseStartTime = performance.now();
+        lastFrameTimestamp = performance.now();
+        animationFrameId = requestAnimationFrame(update);
+    });
+
+    resize();
+});
+</script>
+</body>
+</html>

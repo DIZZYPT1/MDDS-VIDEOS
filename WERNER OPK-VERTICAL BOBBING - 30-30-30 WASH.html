@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Werner Institute - Precision Linear Vertical Reset</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: white;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #branding {
+            position: absolute;
+            top: 25px;
+            width: 100%;
+            text-align: center;
+            color: #000;
+            z-index: 100;
+            text-transform: uppercase;
+            letter-spacing: 5px;
+            font-weight: 800;
+            font-size: 26px;
+        }
+
+        /* Optokinetic Motion Field */
+        #field {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: white;
+            display: none;
+        }
+
+        /* Washout/Fixation Layer */
+        #washout {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #eee;
+            display: none;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #fixation-point {
+            width: 35px;
+            height: 35px;
+            background-color: red;
+            border-radius: 50%;
+            box-shadow: 0 0 20px rgba(0,0,0,0.15);
+        }
+
+        /* Arrow Indicator Overlay */
+        #arrow-overlay {
+            position: absolute;
+            z-index: 60;
+            display: none;
+            pointer-events: none;
+        }
+
+        .arrow {
+            width: 0;
+            height: 0;
+            border-left: 70px solid transparent;
+            border-right: 70px solid transparent;
+        }
+
+        .arrow-up { border-bottom: 110px solid red; }
+        .arrow-down { border-top: 110px solid red; }
+
+        /* Control and Message Panels */
+        .panel {
+            z-index: 200;
+            background: #fff;
+            padding: 50px;
+            border-radius: 4px;
+            text-align: center;
+            max-width: 550px;
+            box-shadow: 0 30px 60px rgba(0,0,0,0.4);
+            border-top: 10px solid #000;
+        }
+
+        #set-break-panel { display: none; }
+
+        .slider-container {
+            margin: 35px 0;
+            text-align: left;
+        }
+
+        .label-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        label {
+            font-weight: bold;
+            text-transform: uppercase;
+            font-size: 14px;
+            color: #333;
+        }
+
+        .current-value {
+            background: #000;
+            color: #fff;
+            padding: 4px 12px;
+            font-weight: bold;
+            font-size: 18px;
+            border-radius: 3px;
+            min-width: 30px;
+            text-align: center;
+        }
+
+        input[type=range] {
+            width: 100%;
+            height: 10px;
+            background: #ddd;
+            outline: none;
+            cursor: pointer;
+            appearance: none;
+        }
+
+        input[type=range]::-webkit-slider-thumb {
+            appearance: none;
+            width: 25px;
+            height: 25px;
+            background: #000;
+            cursor: pointer;
+            border-radius: 50%;
+        }
+
+        button {
+            margin-top: 25px;
+            padding: 20px 50px;
+            font-size: 18px;
+            font-weight: 800;
+            cursor: pointer;
+            background-color: #000;
+            color: #fff;
+            border: none;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            transition: 0.2s ease-in-out;
+        }
+
+        button:hover { background-color: #444; }
+
+        #timer-box {
+            position: absolute;
+            bottom: 40px;
+            right: 40px;
+            color: #000;
+            font-size: 40px;
+            font-weight: 900;
+            z-index: 150;
+            background: rgba(255,255,255,0.9);
+            padding: 15px 25px;
+            border: 2px solid #000;
+            display: none;
+        }
+
+        #status-display {
+            position: absolute;
+            top: 75px;
+            width: 100%;
+            text-align: center;
+            color: #000;
+            font-size: 22px;
+            font-weight: 700;
+            z-index: 110;
+            text-transform: uppercase;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="branding">Werner Institute</div>
+    <div id="status-display"></div>
+    <div id="timer-box"></div>
+
+    <div id="control-panel" class="panel">
+        <h1 style="margin: 0 0 10px 0; font-size: 28px;">LINEAR VERTICAL RESET</h1>
+        <p style="color: #555; font-size: 15px; margin-bottom: 30px;">Select parameters for clinical precision.</p>
+        
+        <div class="slider-container">
+            <div class="label-row">
+                <label>Flow Speed (1 - 20)</label>
+                <div id="speed-val" class="current-value">10</div>
+            </div>
+            <input type="range" id="speed-slider" min="1" max="20" value="10" oninput="updateUI()">
+        </div>
+
+        <div class="slider-container">
+            <div class="label-row">
+                <label>Bar Density (2 - 12)</label>
+                <div id="density-val" class="current-value">6</div>
+            </div>
+            <input type="range" id="density-slider" min="2" max="12" value="6" step="2" oninput="updateUI()">
+        </div>
+
+        <button onclick="beginSession()">Start Clinical Session</button>
+    </div>
+
+    <div id="set-break-panel" class="panel">
+        <h1 style="font-size: 28px;">SET COMPLETE</h1>
+        <p style="font-size: 18px; line-height: 1.6; color: #333;">"Hey, you made it through the first set. Stop and see how you feel."</p>
+        <p style="color: #666;">Take a moment to assess your bobbing sensation before proceeding.</p>
+        <button onclick="resumeSession()">Start Next Set</button>
+    </div>
+
+    <div id="field"></div>
+    <div id="washout"><div id="fixation-point"></div></div>
+
+    <div id="arrow-overlay">
+        <div id="arrow-icon" class="arrow"></div>
+    </div>
+
+    <script>
+        let animID;
+        let pos = 0;
+        let speed = 10;
+        let density = 6;
+        let currentPhaseIndex = 0;
+
+        const protocol = [
+            { type: 'active', flow: 'down', arrow: 'up', text: 'Top-to-Bottom Flow', duration: 30 },
+            { type: 'washout', text: 'Washout Phase', duration: 30 },
+            { type: 'active', flow: 'up', arrow: 'down', text: 'Bottom-to-Top Flow', duration: 30 },
+            { type: 'washout', text: 'Washout Phase', duration: 30 },
+            { type: 'break' } // Manual stop point
+        ];
+
+        function updateUI() {
+            document.getElementById('speed-val').innerText = document.getElementById('speed-slider').value;
+            document.getElementById('density-val').innerText = document.getElementById('density-slider').value;
+        }
+
+        function beginSession() {
+            speed = parseInt(document.getElementById('speed-slider').value);
+            density = parseInt(document.getElementById('density-slider').value);
+            document.getElementById('control-panel').style.display = 'none';
+            document.getElementById('timer-box').style.display = 'block';
+            applyVisuals();
+            runPhase(0);
+        }
+
+        function resumeSession() {
+            document.getElementById('set-break-panel').style.display = 'none';
+            document.getElementById('timer-box').style.display = 'block';
+            runPhase(0); // Restarting the sequence for the next set
+        }
+
+        function applyVisuals() {
+            const field = document.getElementById('field');
+            const height = (100 / density); 
+            field.style.background = `repeating-linear-gradient(to bottom, #000 0%, #000 ${height}vh, #fff ${height}vh, #fff ${height * 2}vh)`;
+            field.style.backgroundSize = `100% ${height * 2}vh`;
+        }
+
+        function runPhase(idx) {
+            currentPhaseIndex = idx;
+            const p = protocol[idx];
+            
+            if (p.type === 'break') {
+                showBreak();
+                return;
+            }
+
+            document.getElementById('status-display').innerText = p.text;
+            
+            if (p.type === 'active') {
+                document.getElementById('washout').style.display = 'none';
+                document.getElementById('field').style.display = 'block';
+                document.getElementById('arrow-overlay').style.display = 'block';
+                document.getElementById('arrow-icon').className = 'arrow arrow-' + p.arrow;
+                animate(p.flow);
+            } else {
+                cancelAnimationFrame(animID);
+                document.getElementById('field').style.display = 'none';
+                document.getElementById('arrow-overlay').style.display = 'none';
+                document.getElementById('washout').style.display = 'flex';
+            }
+
+            let secs = p.duration;
+            document.getElementById('timer-box').innerText = secs + "s";
+            
+            const timer = setInterval(() => {
+                secs--;
+                document.getElementById('timer-box').innerText = secs + "s";
+                if (secs <= 0) {
+                    clearInterval(timer);
+                    runPhase(idx + 1);
+                }
+            }, 1000);
+        }
+
+        function animate(dir) {
+            const field = document.getElementById('field');
+            const step = (dir === 'down') ? speed : -speed;
+            pos += step;
+            field.style.backgroundPosition = "0px " + pos + "px";
+            animID = requestAnimationFrame(() => animate(dir));
+        }
+
+        function showBreak() {
+            cancelAnimationFrame(animID);
+            document.getElementById('field').style.display = 'none';
+            document.getElementById('arrow-overlay').style.display = 'none';
+            document.getElementById('washout').style.display = 'none';
+            document.getElementById('timer-box').style.display = 'none';
+            document.getElementById('status-display').innerText = "";
+            document.getElementById('set-break-panel').style.display = 'block';
+        }
+    </script>
+</body>
+</html>
